@@ -10,7 +10,7 @@ from seaborn import jointplot, plt
 from pandas import DataFrame
 import datetime as dt
 from quandl import get as quandl_get
-from quandl_products import FUTURES
+from qproducts import FUTURES
 
 try:    from pandas_datareader import data as pdr
 except: raise ImportError('try: pip install pandas_datareader')

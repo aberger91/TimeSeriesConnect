@@ -1,3 +1,9 @@
+'''
+simple app that takes input <xs, ys, year>
+and does linear regression/correlation and histogram plots
+where xs and ys are exchange product codes or yahoo stock ticker
+exchange product codes are identical to product codes on CME, ICE, LIFFE, etc ..
+'''
 from ts_connect import TSConnections
         
 if __name__ == '__main__':
