@@ -43,13 +43,13 @@ class TSCFrame(object):
 
 class TSCRemote(TSCFrame):
     '''
-    handle posts to quandl, yahoo
+    handle single posts to quandl, yahoo
     '''
     def __init__(self, product, year):
         super().__init__(product, year)
-        self.df =               self._fetch_data()
-        self._col = self.name = self._get_column_name()
-        self._series =          self.df[self._col]
+        self.df =      self._fetch_data()
+        self._col =    self._get_column_name()
+        self._series = self.df[self._col]
 
     def _quandl(self):
         _start = '%s-01-01' % self.year
