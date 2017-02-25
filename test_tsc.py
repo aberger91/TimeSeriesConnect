@@ -4,7 +4,7 @@ and does linear regression/correlation and histogram plots
 where xs_str and ys_str are exchange product codes or yahoo stock ticker
 exchange product codes are identical to product codes on CME, ICE, LIFFE, etc ..
 '''
-from ts_connect import PairComposite
+from tsc import TSCPairs
         
 if __name__ == '__main__':
     from sys import argv
@@ -15,7 +15,7 @@ if __name__ == '__main__':
         ys_str = argv[2]
         start_year = argv[3]
 
-        conn = PairComposite(xs_str, ys_str, start_year)
+        conn = TSCPairs(xs_str, ys_str, start_year)
         
         conn.correlate()
         conn.plot_volatility()

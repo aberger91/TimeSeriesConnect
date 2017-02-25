@@ -54,7 +54,7 @@ class RemoteDataHandler(object):
         return self.product in QPRODUCT
         
 
-class TSObject(RemoteDataHandler):
+class TSCConnection(RemoteDataHandler):
     '''
     proxy for url request handler
     '''
@@ -88,7 +88,7 @@ class TSObject(RemoteDataHandler):
             return getattr(self, value)
 
 
-class TSBatch(object):
+class TSCBatch(object):
     def __init__(self, tickers, year):
         '''
         lookup and fetch list of product codes
@@ -106,7 +106,7 @@ class TSBatch(object):
         tickers, year = values
         self._dfs = DataFrame()
         for ticker in tickers:
-            ts_object = TSObject(ticker, year)
+            ts_object = TSCConnection(ticker, year)
             self._dfs[ticker] = ts_object._series
 
     def __getattr__(self, value):
@@ -123,7 +123,7 @@ class TSBatch(object):
         plt.show()
 
 
-class PairComposite(object):
+class TSCPairs(object):
     '''
     comparisons between prices and returns for two time series
     '''
@@ -147,8 +147,8 @@ class PairComposite(object):
     def dfs(self, values):
         #TODO protect this against err
         xs, ys = values
-        self._xs = TSObject(xs, self._start_year)
-        self._ys = TSObject(ys, self._start_year)
+        self._xs = TSCConnection(xs, self._start_year)
+        self._ys = TSCConnection(ys, self._start_year)
 
     def _init(self):
         _xs_series = self._xs._df[self._xs._col]
