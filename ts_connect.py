@@ -1,144 +1,140 @@
 #!/usr/bin/env python3
 '''
 python module for finding connections between time series of financial instruments
-
-daily linear correlation between daily E-Mini S&P and Euro/USD futures example:
-python test_ts.py 6E ^GSPC 2012
 '''
 
 from seaborn import jointplot, plt
 from pandas import DataFrame
 import datetime as dt
 from quandl import get as quandl_get
-from qproducts import FUTURES
+from qproducts import QPRODUCT
 
 try:    from pandas_datareader import data as pdr
 except: raise ImportError('try: pip install pandas_datareader')
 
-class DataSource:
-    def __init__(self, name, function, start):
-        self.name = name
-        self.function = function
-        self.start = start
+COLUMN_NAMES = ('Adj Close', 'Settle', 'Value', 'Last')
 
-
-class TSParameters:
-    '''
-    global, read-only variables chosen before running program
-    '''
-    def __init__(self):
-        self.QPRODUCTS =    self.QPRODUCTS
-        self.VIEWS =        self.VIEWS
-        self.COLUMN_NAMES = self.COLUMN_NAMES
+class TSCError(Exception):
+    pass
     
-    @property
-    def QPRODUCTS(self):
-        '''
-        mapping of exchange product codes to quandl urls
-        '''
-        return FUTURES
-        
-    @property
-    def VIEWS(self):
-        '''
-        mapping of source to (function, start, kwargs)
-        '''
-        return {'quandl': DataSource('quandl', quandl_get, '%-01-01'),
-                'yahoo': DataSource('yahoo', pdr.DataReader, dt.datetime(int(year), 1, 1))}
-        
-    @property
-    def COLUMN_NAMES(self):
-        '''
-        known column names to perform calculations on
-        '''
-        return ('Adj Close', 'Settle', 'Value', 'Last')
-
-    
-class TSDataHandler(TSParameters):
+class RemoteDataHandler:
     '''
     stream data into df from quandl else yahoo
     '''
+    def _quandl(self, product, year):
+        _start = '%s-01-01' % year
+        try:
+            df = quandl_get(QPRODUCT[product], start_date=_start)
+        except Exception as e:
+            raise TSCError('quandl connection failed %s' % e)
+        return df
+
+    def _yahoo(self, product, year):
+        _start = dt.datetime(int(year), 1, 1)
+        try:
+            df = pdr.DataReader(product, 'yahoo', start=_start)
+        except Exception as e:
+            raise TSCError('yahoo connection failed %s' % e)
+        return df
+
     def _fetch_data(self, product, year):
         #TODO make data structure that replaces logic 
         if self._qproduct_exists(product):
-            _start = '%s-01-01' % year
-            try:
-                df = quandl_get(self.QPRODUCTS[product], start_date=_start)
-            except Exception as e:
-                raise ValueError('quandl connection failed %s' % e)
-            
-        else:  # try yahoo
-            _start = dt.datetime(int(year), 1, 1)
-            try:
-                df = pdr.DataReader(product, 'yahoo', start=_start)
-            except Exception as e:
-                raise ValueError('yahoo connection failed %s' % e)
-                
+            df = self._quandl(product, year)
+        else:
+            df = self._yahoo(product, year)
         return df
 
     def _qproduct_exists(self, product):
-        return product in self.QPRODUCTS
+        return product in QPRODUCT
 
         
-class TSConnect(TSDataHandler):
-    def __init__(self, xs, ys, year):
-        self._xs_str = xs  # product code or stock symbol
-        self._ys_str = ys  # product code or stock symbol
-        self.start_year = year  # int
-        
-        self.xs, self.ys = self._get_df(xs), self._get_df(ys) 
-        x_col, y_col = self._get_column_names()
-        
-        self.dfs = DataFrame({xs: self.xs[x_col], ys: self.ys[y_col]})
-
+class DataFetch(RemoteDataHandler):
     def _get_df(self, product):
         '''
-        fetch remote data
-        if not quandl, try yahoo, if not either, raise err
+        fetch remote data: if not quandl, try yahoo, if not either, raise err
         return df
         '''
-        return self._fetch_data(product, self.start_year)
+        return self._fetch_data(product, self._start_year)
         
     def _col_name(self, cols):
         '''
-        raise error unless a column from the df matches
+        raise error unless column from the df matches parameters
         return str
         '''
-        for col in self.COLUMN_NAMES:
+        for col in COLUMN_NAMES:
             if col in cols:
                 return col
-        raise ValueError('column does not exist in %s' % self.COLUMN_NAMES)
+        raise TSCError('column does not exist in %s' % COLUMN_NAMES)
         
     def _get_column_names(self):
         '''
         return tuple (of strs) with length 2 or raise err
         '''
-        x_col, y_col = self._col_name(self.xs.columns), self._col_name(self.ys.columns)
-        return x_col, y_col
+        x_col_name = self._col_name(self._xs.columns)
+        y_col_name = self._col_name(self._ys.columns)
+        return x_col_name, y_col_name
     
-        
-    def check_equal_lengths(self):
+
+class PairComposite(DataFetch):
+    '''
+    comparisons between prices and returns for two time series
+    '''
+    def __init__(self, xs, ys, year):
         '''
-        warning if lengths do not match
+        pull data for tickers and wrap into new df 
+        return df
+        '''
+        self._xs_str =      xs  # product code or stock symbol
+        self._ys_str =      ys  # product code or stock symbol
+        self._start_year =  year
+        self.dfs =          (xs, ys)  # delegate to setter by default
+        self._init()
+
+    @property
+    def dfs(self):
+        return self._dfs
+
+    @dfs.setter
+    def dfs(self, values):
+        #TODO protect this against err
+        xs, ys = values
+        self._xs = self._get_df(xs)
+        self._ys = self._get_df(ys) 
+
+    def __getattr__(self, value):
+        '''
+        act like a df if we can
+        '''
+        if hasattr(self.dfs, value):
+            return getattr(self.dfs, value)
+        else:
+            return getattr(self, value)
+
+    def _init(self):
+        col_names = self._get_column_names()
+        self._dfs = DataFrame({self._xs_str: self._xs[col_names[0]], 
+                               self._ys_str: self._ys[col_names[1]]})
+        self._check_equal_lengths()
+        self._ret_dfs = self._dfs[1:].pct_change()
+        self._data = {'price': self._dfs, 'returns': self._ret_dfs}
+
+    def _check_equal_lengths(self):
+        '''
+        warning if lengths do not match, for calculations
         return None
         '''
-        if len(self.xs) != len(self.ys):
+        if len(self._xs) != len(self._ys):
             print('warning: len mismatch: xs:%s ys:%s' % 
-                  (len(self.xs), len(self.ys)))
+                  (len(self._xs), len(self._ys)))
 
-
-        self._do_calculations()
-        self.data = {'price': self.dfs, 'returns': self.ret_dfs}
-
-
-class TSCompute(TSConnect):
-    def do_correlation(self):
+    def correlate(self):
         '''
         linear regression, correlation on scatterplot w/ two histograms on the side
-        return list
+        return list of seaborn JointGrid objects
         '''
         figs = []
-        for name, _df in self.data.items():
+        for name, _df in self._data.items():
             figs.append(jointplot(self._xs_str, 
                                   self._ys_str, 
                                   _df, 
@@ -152,18 +148,10 @@ class TSCompute(TSConnect):
         (annualized) stdev of returns - volatility measure
         return plt
         '''
-        for name, _df in self.data.items():
+        for name, _df in self._data.items():
             _df.dropna() \
                 .rolling(250) \
                 .std() \
                 .plot(title='250 window stdev - %s' % name)
         plt.show()
         return plt
-        
-    def _do_calculations(self):
-        '''
-        prelim calculations
-        return None
-        '''
-        self.check_equal_lengths()
-        self.ret_dfs = self.dfs[1:].pct_change()

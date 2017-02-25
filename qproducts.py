@@ -1,7 +1,7 @@
 '''
 dictionary mapping exchange product codes to quandl urls
 '''
-FUTURES = {'GC': 'CHRIS/CME_GC1',
+QPRODUCT = {'GC': 'CHRIS/CME_GC1',
            'CL': 'CHRIS/CME_CL1',
            'NG': 'CHRIS/CME_NG1',
            'ZC': 'CHRIS/CME_C1',
