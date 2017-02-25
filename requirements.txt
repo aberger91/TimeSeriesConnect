@@ -1,0 +1,5 @@
+pandas
+quandl
+seaborn
+matplotlib
+pandas_datareader
