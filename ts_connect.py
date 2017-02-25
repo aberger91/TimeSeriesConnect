@@ -15,7 +15,14 @@ from qproducts import FUTURES
 try:    from pandas_datareader import data as pdr
 except: raise ImportError('try: pip install pandas_datareader')
 
-class Params:
+class DataSource:
+    def __init__(self, name, function, start):
+        self.name = name
+        self.function = function
+        self.start = start
+
+
+class TSParameters:
     '''
     global, read-only variables chosen before running program
     '''
@@ -36,15 +43,8 @@ class Params:
         '''
         mapping of source to (function, start, kwargs)
         '''
-        return {'quandl':
-                    {'f':      quandl_get,
-                     '_start': '%s-01-01', 
-                     '_kwarg': 'start'}, 
-                'yahoo': 
-                    {'f':      pdr.DataReader, 
-                     '_start': dt.datetime(int(year), 1, 1), 
-                     '_kwarg': 'start_date'}
-               }
+        return {'quandl': DataSource('quandl', quandl_get, '%-01-01'),
+                'yahoo': DataSource('yahoo', pdr.DataReader, dt.datetime(int(year), 1, 1))}
         
     @property
     def COLUMN_NAMES(self):
@@ -52,8 +52,9 @@ class Params:
         known column names to perform calculations on
         '''
         return ('Adj Close', 'Settle', 'Value', 'Last')
+
     
-class TSDataHandler(Params):
+class TSDataHandler(TSParameters):
     '''
     stream data into df from quandl else yahoo
     '''
@@ -79,7 +80,7 @@ class TSDataHandler(Params):
         return product in self.QPRODUCTS
 
         
-class TSConnections(TSDataHandler):
+class TSConnect(TSDataHandler):
     def __init__(self, xs, ys, year):
         self._xs_str = xs  # product code or stock symbol
         self._ys_str = ys  # product code or stock symbol
@@ -89,17 +90,7 @@ class TSConnections(TSDataHandler):
         x_col, y_col = self._get_column_names()
         
         self.dfs = DataFrame({xs: self.xs[x_col], ys: self.ys[y_col]})
-        self._do_calculations()
-        self.data = {'price': self.dfs, 'returns': self.ret_dfs}
-        
-    def _do_calculations(self):
-        '''
-        prelim calculations
-        return None
-        '''
-        self.check_equal_lengths()
-        self.ret_dfs = self.dfs[1:].pct_change()
-        
+
     def _get_df(self, product):
         '''
         fetch remote data
@@ -125,6 +116,22 @@ class TSConnections(TSDataHandler):
         x_col, y_col = self._col_name(self.xs.columns), self._col_name(self.ys.columns)
         return x_col, y_col
     
+        
+    def check_equal_lengths(self):
+        '''
+        warning if lengths do not match
+        return None
+        '''
+        if len(self.xs) != len(self.ys):
+            print('warning: len mismatch: xs:%s ys:%s' % 
+                  (len(self.xs), len(self.ys)))
+
+
+        self._do_calculations()
+        self.data = {'price': self.dfs, 'returns': self.ret_dfs}
+
+
+class TSCompute(TSConnect):
     def do_correlation(self):
         '''
         linear regression, correlation on scatterplot w/ two histograms on the side
@@ -153,11 +160,10 @@ class TSConnections(TSDataHandler):
         plt.show()
         return plt
         
-    def check_equal_lengths(self):
+    def _do_calculations(self):
         '''
-        warning if lengths do not match
+        prelim calculations
         return None
         '''
-        if len(self.xs) != len(self.ys):
-            print('warning: len mismatch: xs:%s ys:%s' % 
-                  (len(self.xs), len(self.ys)))
+        self.check_equal_lengths()
+        self.ret_dfs = self.dfs[1:].pct_change()
