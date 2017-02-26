@@ -4,24 +4,14 @@ python module for finding connections between time series of financial instrumen
 '''
 __author__ = 'Andrew Berger'
 
+from quandl import get as quandl_get
 from seaborn import jointplot, plt
 from pandas import DataFrame
 import datetime as dt
-from quandl import get as quandl_get
-from quandl import ApiConfig
-from .config import QPRODUCT
+from .config import *
 
 try:    from pandas_datareader import data as pdr
 except: raise ImportTSCError('try: pip install pandas_datareader')
-
-
-COLUMN_NAMES = ('Adj Close', 'Settle', 'Value', 'Last')
-
-class TSCError(Exception):
-    pass
-    
-try:    ApiConfig.api_key = open('../quandl_api.key', 'r').read().strip()
-except: raise TSCError('could not load quandl_api_key')
 
 
 class Frame(object):
@@ -29,9 +19,9 @@ class Frame(object):
     act like a df if we can else err
     '''
     def __init__(self, product, year):
-        self.product = product
-        self.year = year
-        self.df = DataFrame()
+        self.product =  product
+        self.year =     year
+        self.df =       DataFrame()
 
     def __getattr__(self, value):
         try:
@@ -94,8 +84,9 @@ class Batch(Frame):
         '''
         lookup and fetch list of product codes
         '''
-        super().__init__(tickers, year)
-        self.tickers = tickers
+        self.tickers =  tickers
+        self.year =     year
+        self.df =       DataFrame()
         for ticker in tickers:
             ts_object = Remote(ticker, year)
             self.df[ticker] = ts_object._series
@@ -115,8 +106,6 @@ class Pairs(Batch):
         return df
         '''
         super().__init__(tickers, year)
-        self._xs =      self.df[tickers[0]]
-        self._ys =      self.df[tickers[1]]
         self._init()
 
     def _init(self):
@@ -128,9 +117,10 @@ class Pairs(Batch):
         warning if lengths do not match, for calculations
         return None
         '''
-        if len(self._xs) != len(self._ys):
+        len_xs, len_ys = [len(self.df[_]) for _ in self.tickers]
+        if len_xs != len_ys:
             print('warning: len mismatch: xs:%s ys:%s' % 
-                  (len(self._xs), len(self._ys)))
+                  (len_xs, len_ys))
 
     def correlate(self):
         '''
