@@ -5,8 +5,19 @@
 
 1. Install (Python 3.5)
     
+    ```
     sudo apt-get install libssl-dev
+    python3 -m pip install virtualenv
+    ```
+
+    ```
+    virtualenv venv
+    cd venv/bin && source activate
+    ```
+
+    ```
     pip install -r requirements.txt    
+    ```
 
 2. Examples
 
