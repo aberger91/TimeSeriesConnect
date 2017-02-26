@@ -9,10 +9,10 @@ from pandas import DataFrame
 import datetime as dt
 from quandl import get as quandl_get
 from quandl import ApiConfig
-from qproducts import QPRODUCT
+from .config import QPRODUCT
 
 try:    from pandas_datareader import data as pdr
-except: raise ImportError('try: pip install pandas_datareader')
+except: raise ImportTSCError('try: pip install pandas_datareader')
 
 
 COLUMN_NAMES = ('Adj Close', 'Settle', 'Value', 'Last')
@@ -24,7 +24,7 @@ try:    ApiConfig.api_key = open('../quandl_api.key', 'r').read().strip()
 except: raise TSCError('could not load quandl_api_key')
 
 
-class TSCFrame(object):
+class Frame(object):
     '''
     act like a df if we can else err
     '''
@@ -41,7 +41,7 @@ class TSCFrame(object):
                             value, e))
 
 
-class TSCRemote(TSCFrame):
+class Remote(Frame):
     '''
     handle single posts to quandl, yahoo
     '''
@@ -89,7 +89,7 @@ class TSCRemote(TSCFrame):
         raise TSCError('column does not exist in config')
 
 
-class TSCBatch(TSCFrame):
+class Batch(Frame):
     def __init__(self, tickers, year):
         '''
         lookup and fetch list of product codes
@@ -97,7 +97,7 @@ class TSCBatch(TSCFrame):
         super().__init__(tickers, year)
         self.tickers = tickers
         for ticker in tickers:
-            ts_object = TSCRemote(ticker, year)
+            ts_object = Remote(ticker, year)
             self.df[ticker] = ts_object._series
 
     def plot(self):
@@ -105,7 +105,7 @@ class TSCBatch(TSCFrame):
         plt.show()
 
 
-class TSCPairs(TSCBatch):
+class Pairs(Batch):
     '''
     comparisons between prices and returns for two time series
     '''
