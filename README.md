@@ -3,8 +3,9 @@
 - use for economic research, market, or trading strategy research
 - wrapper over pandas_datareader.data.DataReader and quandl.get
 
-1. Install (Python - Anaconda 3.5)
+1. Install (Python 3.5)
     
+    sudo apt-get install libssl-dev
     pip install -r requirements.txt    
 
 2. Examples
