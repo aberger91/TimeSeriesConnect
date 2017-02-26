@@ -21,11 +21,11 @@ class Frame(object):
     def __init__(self, product, year):
         self.product =  product
         self.year =     year
-        self.df =       DataFrame()
+        self.frame =    DataFrame()
 
     def __getattr__(self, value):
         try:
-            return getattr(self.df, value)
+            return getattr(self.frame, value)
         except Exception as e:
             raise TSCError('attribute %s does not exist\n%s' % (
                             value, e))
@@ -37,9 +37,9 @@ class Remote(Frame):
     '''
     def __init__(self, product, year):
         super().__init__(product, year)
-        self.df =      self._fetch_data()
+        self.frame =   self._fetch_data()
         self._col =    self._get_column_name()
-        self._series = self.df[self._col]
+        self._series = self.frame[self._col]
 
     def _quandl(self):
         _start = '%s-01-01' % self.year
@@ -74,27 +74,41 @@ class Remote(Frame):
         return str
         '''
         for col in COLUMN_NAMES:
-            if col in self.df.columns:
+            if col in self.frame.columns:
                 return col
         raise TSCError('column does not exist in config')
 
 
 class Batch(Frame):
-    def __init__(self, tickers, year):
+    def __init__(self, product, year):
         '''
         lookup and fetch list of product codes
         '''
-        self.tickers =  tickers
-        self.year =     year
-        self.df =       DataFrame()
-        for ticker in tickers:
+        super().__init__(product, year)
+        for ticker in product:
             ts_object = Remote(ticker, year)
-            self.df[ticker] = ts_object._series
+            self.frame[ticker] = ts_object._series
 
     def plot(self):
-        self.df.plot()
+        self.frame.plot()
         plt.show()
 
+    def candles(self):
+        _candles = DataFrame()
+        for name, _df in self.frame.items():
+            _df.index = map(lambda x: x.timestamp(), _df.index)
+            try:
+                candles = list(zip(_df.index.values, 
+                                   _df.Open, 
+                                   _df.High, 
+                                   _df.Low, 
+                                   _df.Close))
+                _candles[name] = candles
+            except Exception as e:
+                print('''
+                        could not convert %s to candles \n %s
+                        ''' % (name, e))
+                _candles[name] = []
 
 class Pairs(Batch):
     '''
@@ -103,21 +117,17 @@ class Pairs(Batch):
     def __init__(self, tickers, year):
         '''
         pull data for tickers and wrap into new df 
-        return df
         '''
         super().__init__(tickers, year)
-        self._init()
-
-    def _init(self):
-        self._ret_df =  self.df[1:].pct_change()
-        self._dfs =     {'price': self.df, 'returns': self._ret_df}
+        self._ret_df =  self.frame[1:].pct_change()
+        self._dfs =     {'price': self.frame, 'returns': self._ret_df}
 
     def _check_equal_lengths(self):
         '''
         warning if lengths do not match, for calculations
         return None
         '''
-        len_xs, len_ys = [len(self.df[_]) for _ in self.tickers]
+        len_xs, len_ys = [len(self.frame[_]._series) for _ in self.product]
         if len_xs != len_ys:
             print('warning: len mismatch: xs:%s ys:%s' % 
                   (len_xs, len_ys))
@@ -129,9 +139,9 @@ class Pairs(Batch):
         '''
         figs = []
         for name, _df in self._dfs.items():
-            figs.append(jointplot(self.tickers[0],
-                                  self.tickers[1], 
-                                  _df, 
+            figs.append(jointplot(self.product[0],
+                                  self.product[1], 
+                                  _df._series,
                                   kind='reg', 
                                   annot_kws={'title': name}))
         plt.show()
@@ -143,7 +153,7 @@ class Pairs(Batch):
         return plt
         '''
         for name, _df in self._dfs.items():
-            _df.dropna() \
+            _df._series.dropna() \
                 .rolling(250) \
                 .std() \
                 .plot(title='250 window stdev - %s' % name)
