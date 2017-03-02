@@ -1,3 +1,2 @@
 seaborn
 quandl
-pandas_datareader
