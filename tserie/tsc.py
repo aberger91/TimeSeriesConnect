@@ -37,22 +37,21 @@ class Remote(Frame):
     '''
     def __init__(self, product, year):
         super().__init__(product, year)
+        self._start = '%s-01-01' % year
         self.frame =   self._fetch_data()
         self._col =    self._get_column_name()
         self._series = self.frame[self._col]
 
     def _quandl(self):
-        _start = '%s-01-01' % self.year
         try:
-            df = quandl_get(QPRODUCT[self.product], start_date=_start)
+            df = quandl_get(QPRODUCT[self.product], start_date=self._start)
         except Exception as e:
             raise TSCError('quandl connection failed %s' % e)
         return df
 
     def _yahoo(self):
-        _start = dt.datetime(int(self.year), 1, 1)
         try:
-            df = pdr.DataReader(self.product, 'yahoo', start=_start)
+            df = pdr.DataReader(self.product, 'yahoo', start=self._start)
         except Exception as e:
             raise TSCError('yahoo connection failed %s' % e)
         return df
@@ -85,49 +84,56 @@ class Batch(Frame):
         lookup and fetch list of product codes
         '''
         super().__init__(product, year)
-        for ticker in product:
-            ts_object = Remote(ticker, year)
-            self.frame[ticker] = ts_object._series
+        self.frames = dict()
+        self._init_frames()
+
+    def _init_frames(self):
+        for ticker in self.product:
+            ts_conn = Remote(ticker, self.year)
+            self.frames[ticker] = ts_conn
+
+    def __iter__(self):
+        for key, conn_obj in self.frames.items():
+            yield key, conn_obj
+
+    def __getattr__(self, val):
+        '''
+        override Frame .. handle pd.Series calls
+        '''
+        try:
+            for name, conn_obj in self.frames.items():
+                return getattr(conn_obj._series, val)
+        except Exception as e:
+            pass
 
     def plot(self):
-        self.frame.plot()
+        for name, conn_obj in self.frames.items():
+            conn_obj._series.plot()
         plt.show()
 
-    def candles(self):
-        _candles = DataFrame()
-        for name, _df in self.frame.items():
-            _df.index = map(lambda x: x.timestamp(), _df.index)
-            try:
-                candles = list(zip(_df.index.values, 
-                                   _df.Open, 
-                                   _df.High, 
-                                   _df.Low, 
-                                   _df.Close))
-                _candles[name] = candles
-            except Exception as e:
-                print('''
-                        could not convert %s to candles \n %s
-                        ''' % (name, e))
-                _candles[name] = []
 
 class Pairs(Batch):
     '''
     comparisons between prices and returns for two time series
     '''
-    def __init__(self, tickers, year):
+    def __init__(self, product, year):
         '''
-        pull data for tickers and wrap into new df 
+        pull data for product and wrap into new df 
         '''
-        super().__init__(tickers, year)
-        self._ret_df =  self.frame[1:].pct_change()
-        self._dfs =     {'price': self.frame, 'returns': self._ret_df}
+        super().__init__(product, year)
+        self._add_returns_column()
+        self._check_equal_lengths()
+
+    def _add_returns_column(self):
+        for name, conn_obj in self.frames.items():
+            conn_obj._ret_df =  conn_obj._series.pct_change()
 
     def _check_equal_lengths(self):
         '''
         warning if lengths do not match, for calculations
         return None
         '''
-        len_xs, len_ys = [len(self.frame[_]._series) for _ in self.product]
+        len_xs, len_ys = [len(self.frames[_]._series) for _ in self.product]
         if len_xs != len_ys:
             print('warning: len mismatch: xs:%s ys:%s' % 
                   (len_xs, len_ys))
@@ -135,15 +141,17 @@ class Pairs(Batch):
     def correlate(self):
         '''
         linear regression, correlation on scatterplot w/ two histograms on the side
-        return list of seaborn JointGrid objects
+        return list of seaborn JointGrid objects comparing correlations on price vs returns
         '''
         figs = []
-        for name, _df in self._dfs.items():
-            figs.append(jointplot(self.product[0],
-                                  self.product[1], 
-                                  _df._series,
+        for name, conn_obj in self.frames.items():
+            xs, ys = self.product
+            dat = DataFrame({xs: self.frames[name]._series, ys: self.frames[name]._ret_df})
+            figs.append(jointplot(xs,
+                                  ys,
+                                  dat,
                                   kind='reg', 
-                                  annot_kws={'title': name}))
+                                  annot_kws={'title': 'prices'}))
         plt.show()
         return figs
         
@@ -152,10 +160,11 @@ class Pairs(Batch):
         (annualized) stdev of returns - volatility measure
         return plt
         '''
-        for name, _df in self._dfs.items():
-            _df._series.dropna() \
-                .rolling(250) \
-                .std() \
-                .plot(title='250 window stdev - %s' % name)
+        for name, conn_obj in self.frames.items():
+            for attr in ['_series', '_ret_df']:
+                getattr(conn_obj, attr).dropna() \
+                                       .rolling(250) \
+                                       .std() \
+                                       .plot(title='250 window stdev prices')
         plt.show()
         return plt
