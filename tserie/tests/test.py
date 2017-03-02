@@ -16,14 +16,9 @@ if __name__ == '__main__':
         start_year = argv[3]
 
         conn = Pairs([xs_str, ys_str], start_year)
-
         conn.correlate()
-        conn.plot_volatility()
 
         bat = Batch(['WEC', 'CL'], 2010)
-        print(bat.head()) 
-
         bat.plot()
-
     else:
         raise ValueError('usage: ts_connect.py <xs_str> <ys_str> <start_year>')

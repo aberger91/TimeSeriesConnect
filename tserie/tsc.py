@@ -42,31 +42,18 @@ class Remote(Frame):
         self._col =    self._get_column_name()
         self._series = self.frame[self._col]
 
-    def _quandl(self):
-        try:
-            df = quandl_get(QPRODUCT[self.product], start_date=self._start)
-        except Exception as e:
-            raise TSCError('quandl connection failed %s' % e)
-        return df
-
-    def _yahoo(self):
-        try:
-            df = pdr.DataReader(self.product, 'yahoo', start=self._start)
-        except Exception as e:
-            raise TSCError('yahoo connection failed %s' % e)
-        return df
-
     def _fetch_data(self):
         '''
         stream data into df from quandl else yahoo
         return df
         '''
-        df = self._quandl() if self._qproduct_exists() else self._yahoo()
+        if self.product in QPRODUCT:
+            quandl_code = QPRODUCT[self.product]
+            df = quandl_get(quandl_code, start_date=self._start)
+        else:
+            df = pdr.DataReader(self.product, 'yahoo', start=self._start)
         return df
 
-    def _qproduct_exists(self):
-        return self.product in QPRODUCT
-        
     def _get_column_name(self):
         '''
         raise error unless column from the df matches parameters
@@ -79,16 +66,18 @@ class Remote(Frame):
 
 
 class Batch(Frame):
-    def __init__(self, product, year):
+    def __init__(self, products, year):
         '''
         lookup and fetch list of product codes
         '''
-        super().__init__(product, year)
+        super().__init__(products, year)
         self.frames = dict()
-        self._init_frames()
+        self.add(products)
 
-    def _init_frames(self):
-        for ticker in self.product:
+    def add(self, products):
+        for ticker in products:
+            if ticker not in self.product:
+                self.product += ticker
             ts_conn = Remote(ticker, self.year)
             self.frames[ticker] = ts_conn
 
@@ -98,29 +87,25 @@ class Batch(Frame):
 
     def __getattr__(self, val):
         '''
-        override Frame .. handle pd.Series calls
+        override Frame, handle pd.Series calls
         '''
         try:
             for name, conn_obj in self.frames.items():
+                #TODO // return a list of items
                 return getattr(conn_obj._series, val)
         except Exception as e:
             pass
-
-    def plot(self):
-        for name, conn_obj in self.frames.items():
-            conn_obj._series.plot()
-        plt.show()
 
 
 class Pairs(Batch):
     '''
     comparisons between prices and returns for two time series
     '''
-    def __init__(self, product, year):
+    def __init__(self, products, year):
         '''
-        pull data for product and wrap into new df 
+        pull data for products and wrap into new df 
         '''
-        super().__init__(product, year)
+        super().__init__(products, year)
         self._add_returns_column()
         self._check_equal_lengths()
 
@@ -133,7 +118,7 @@ class Pairs(Batch):
         warning if lengths do not match, for calculations
         return None
         '''
-        len_xs, len_ys = [len(self.frames[_]._series) for _ in self.product]
+        len_xs, len_ys = [len(self.frames[df]._series) for df in self.frames.keys()]
         if len_xs != len_ys:
             print('warning: len mismatch: xs:%s ys:%s' % 
                   (len_xs, len_ys))
@@ -146,7 +131,8 @@ class Pairs(Batch):
         figs = []
         for name, conn_obj in self.frames.items():
             xs, ys = self.product
-            dat = DataFrame({xs: self.frames[name]._series, ys: self.frames[name]._ret_df})
+            dat = DataFrame({xs: self.frames[name]._series,
+                             ys: self.frames[name]._ret_df})
             figs.append(jointplot(xs,
                                   ys,
                                   dat,
