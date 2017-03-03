@@ -8,15 +8,15 @@ import tserie as tsc
 import matplotlib.pyplot as plt
 from sys import argv
     
-xs = argv[1]
+xs = 'GC'
 ys = '6J'
 start_year = 2015
 
 
-if __name__ == '__main__':
+def main():
 
-    #conn = Pairs([xs_str, ys_str], start_year)
-    #conn.correlate()
+    conn = Pairs([xs, ys], start_year)
+    conn.correlate()
 
     #bat = Batch(['WEC', 'CL'], 2010)
     #bat.plot()
@@ -26,3 +26,11 @@ if __name__ == '__main__':
     rem.autocorr()
     mse = rem.autoregress()
     print('Mean Squared Error: %s' % mse)
+
+    print('''
+            Test complete.
+            ''')
+
+
+if __name__ == '__main__':
+    main()

@@ -20,27 +20,11 @@ except: raise ImportTSCError('try: pip install pandas_datareader')
 
 class Frame(object):
     '''
-    act like a df if we can else err
+    handle single posts to quandl, yahoo
     '''
     def __init__(self, product, year):
         self.product =  product
         self.year =     year
-        self.frame =    DataFrame()
-
-    def __getattr__(self, value):
-        try:
-            return getattr(self.frame, value)
-        except Exception as e:
-            raise TSCError('attribute %s does not exist\n%s' % (
-                            value, e))
-
-
-class Remote(Frame):
-    '''
-    handle single posts to quandl, yahoo
-    '''
-    def __init__(self, product, year):
-        super().__init__(product, year)
         self._start = '%s-01-01' % year
         self.frame =   self._fetch_data()
         self._series = self._get_series()
@@ -111,7 +95,7 @@ class Batch(Frame):
         for ticker in products:
             if ticker not in self.product:
                 self.product += ticker
-            ts_conn = Remote(ticker, self.year)
+            ts_conn = Frame(ticker, self.year)
             self.frames[ticker] = ts_conn
 
     def __iter__(self):
