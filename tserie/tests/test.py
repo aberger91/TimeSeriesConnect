@@ -6,9 +6,10 @@ exchange product codes are identical to product codes on CME, ICE, LIFFE, etc ..
 '''
 import tserie as tsc
 import matplotlib.pyplot as plt
+from sys import argv
     
-xs_str = 'GC'
-ys_str = '6J'
+xs = argv[1]
+ys = '6J'
 start_year = 2015
 
 
@@ -20,7 +21,7 @@ if __name__ == '__main__':
     #bat = Batch(['WEC', 'CL'], 2010)
     #bat.plot()
 
-    rem = tsc.Remote('GC', 2009)
+    rem = tsc.Remote(xs, 2015)
 
     rem.autocorr()
     mse = rem.autoregress()

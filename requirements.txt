@@ -1,2 +1,5 @@
+numpy
 seaborn
 quandl
+statsmodels
+sklearn
