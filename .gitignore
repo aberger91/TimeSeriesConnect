@@ -1,6 +1,7 @@
 *.pyc
 *.swp
 *egg-info
+*.eggs
 __pycache__
 build
 dist
