@@ -4,6 +4,10 @@ python module for finding connections between time series of financial instrumen
 '''
 __author__ = 'Andrew Berger'
 
+import matplotlib.pyplot as plt
+from pandas.tools.plotting import autocorrelation_plot
+from sklearn.metrics import mean_squared_error
+from statsmodels.tsa.ar_model import AR
 from quandl import get as quandl_get
 from seaborn import jointplot, plt
 from pandas import DataFrame
@@ -41,11 +45,6 @@ class Remote(Frame):
         self.frame =   self._fetch_data()
         self._series = self._get_series()
 
-    def _get_series(self):
-        _col =    self._get_column_name()
-        _series = self.frame[_col]
-        return self._series
-
     def _fetch_data(self):
         '''
         stream data into df from quandl else yahoo
@@ -58,6 +57,11 @@ class Remote(Frame):
             df = pdr.DataReader(self.product, 'yahoo', start=self._start)
         return df
 
+    def _get_series(self):
+        _col =    self._get_column_name()
+        _series = self.frame[_col]
+        return _series
+
     def _get_column_name(self):
         '''
         raise error unless column from the df matches parameters
@@ -67,6 +71,31 @@ class Remote(Frame):
             if col in self.frame.columns:
                 return col
         raise TSCError('column does not exist in config')
+
+    def autocorr(self):
+        autocorrelation_plot(self._series)
+        plt.show()
+
+    def autoregress(self, lag=14):
+        X = self._series.values
+        train, test = X[1:len(X)-lag], X[len(X)-lag:]
+
+        model = AR(train)
+        model_fit = model.fit()
+
+        predictions = model_fit.predict(start=len(train),
+                                        end=len(train)+len(test)-1,
+                                        dynamic=False)
+        error = mean_squared_error(test, predictions)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.plot(test)
+        ax.plot(predictions)
+
+        plt.show()
+        return error
 
 
 class Batch(Frame):

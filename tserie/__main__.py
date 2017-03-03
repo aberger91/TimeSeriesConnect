@@ -21,13 +21,6 @@ print('''
 # do linear comparison
 comp.correlate()
 
-# rolling annual standard deviation
-comp.plot_volatility()
-print('''
-        Testing Batch with CVX, NG, WEC
-        '''
-        )
-
 #  chevron, natural gas, we energies
 bat = tsc.Batch(['CVX', 'NG', 'WEC'], 2016)
 print('''
