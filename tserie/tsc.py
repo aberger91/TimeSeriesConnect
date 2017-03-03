@@ -39,8 +39,12 @@ class Remote(Frame):
         super().__init__(product, year)
         self._start = '%s-01-01' % year
         self.frame =   self._fetch_data()
-        self._col =    self._get_column_name()
-        self._series = self.frame[self._col]
+        self._series = self._get_series()
+
+    def _get_series(self):
+        _col =    self._get_column_name()
+        _series = self.frame[_col]
+        return self._series
 
     def _fetch_data(self):
         '''
