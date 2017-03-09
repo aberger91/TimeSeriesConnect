@@ -22,10 +22,10 @@ class Frame(object):
     '''
     handle single posts to quandl, yahoo
     '''
-    def __init__(self, product, year):
+    def __init__(self, product, start, end):
         self.product =  product
-        self.year =     year
-        self._start = '%s-01-01' % year
+        self._start = '%s-01-01' % start
+        self._end =   '%s-01-01' % end
         self.frame =   self._fetch_data()
         self._series = self._get_series()
 
@@ -36,9 +36,9 @@ class Frame(object):
         '''
         if self.product in QPRODUCT:
             quandl_code = QPRODUCT[self.product]
-            df = quandl_get(quandl_code, start_date=self._start)
+            df = quandl_get(quandl_code, start_date=self._start, end_date=self._end)
         else:
-            df = pdr.DataReader(self.product, 'yahoo', start=self._start)
+            df = pdr.DataReader(self.product, 'yahoo', start=self._start, end=self._end)
         return df
 
     def _get_series(self):
@@ -83,11 +83,11 @@ class Frame(object):
 
 
 class Batch(Frame):
-    def __init__(self, products, year):
+    def __init__(self, products, start, end):
         '''
         lookup and fetch list of product codes
         '''
-        super().__init__(products, year)
+        super().__init__(products, start, end)
         self.frames = dict()
         self.add(products)
 
@@ -95,7 +95,7 @@ class Batch(Frame):
         for ticker in products:
             if ticker not in self.product:
                 self.product += ticker
-            ts_conn = Frame(ticker, self.year)
+            ts_conn = Frame(ticker, self._start, self._end)
             self.frames[ticker] = ts_conn
 
     def __iter__(self):
@@ -118,11 +118,11 @@ class Pairs(Batch):
     '''
     comparisons between prices and returns for two time series
     '''
-    def __init__(self, products, year):
+    def __init__(self, products, start, end):
         '''
         pull data for products and wrap into new df 
         '''
-        super().__init__(products, year)
+        super().__init__(products, start, end)
         self._add_returns_column()
         self._check_equal_lengths()
 

@@ -1,13 +1,15 @@
 from setuptools import setup
 
+desc = 'time series and statistics library for financial instruments',
+packages = ['tserie', 'tserie.config', 'tserie.tests', 'tserie.scripts']
 requirements = [x for x in open('requirements.txt', 'r')],
 
 setup(name='tserie',
       version=0.01,
-      description='time series and statistics library for financial instruments',
+      description=desc,
       url='https://github.com/aberger91',
       author='Andrew Berger',
-      packages=['tserie', 'tserie.config', 'tserie.tests', 'tserie.scripts'],
+      packages=packages,
       install_requires=requirements,
       tests_require=['tserie'],
       test_suite='tserie.tests.test.main',

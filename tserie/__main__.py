@@ -1,35 +1,26 @@
 import tserie as tsc
+import argparse
 
-print('''
-        Welcome to the example tserie program
-        '''
-        )
+def arguments():
+    parser = argparse.ArgumnetParser()
+    parser.add_argument('-t', '--ticker',
+                        nargs=1,
+                        required=True)
+    parser.add_argument('-s', '--start',
+                        nargs=1,
+                        required=True)
+    parser.add_argument('-e', '--end',
+                        nargs=1,
+                        required=True)
+    args = parser.parse_args()
+    return args.ticker, args.start, args.end
 
-# exxon mobile && crude oil
-tickers = ['XOM', 'CL']
-year = 2010
-print('''
-        Fetching data for Exxon Mobile and Crude Oil
-        '''
-        )
-comp = tsc.Pairs(tickers, year)
-print('''
-        Done!
-        '''
-        )
+def main():
+    ticker, start, end = arguments()
 
-# do linear comparison
-comp.correlate()
+    dat = tsc.Frame(ticker, start, end)
+    dat._series.plot()
 
-#  chevron, natural gas, we energies
-bat = tsc.Batch(['CVX', 'NG', 'WEC'], 2016)
-print('''
-        Done!
-        '''
-        )
-bat.plot()
 
-print('''
-        Complete.
-        '''
-        )
+if __name__ == '__main__':
+    main()
