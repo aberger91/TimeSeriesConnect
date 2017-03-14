@@ -6,8 +6,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--instruments', '-i', type=str, required=True)
     parser.add_argument('--start', '-s', type=str, required=True)
+    parser.add_argument('--end', '-e', type=str, required=True)
     args = parser.parse_args()
-    rem = Batch(args.instruments.split(), int(args.start))
+    rem = Batch(args.instruments.split(), int(args.start), int(args.end))
     rem.plot()
     plt.show()
 
