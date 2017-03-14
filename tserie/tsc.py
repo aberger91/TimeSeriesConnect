@@ -9,7 +9,7 @@ from pandas.tools.plotting import autocorrelation_plot
 from sklearn.metrics import mean_squared_error
 from statsmodels.tsa.ar_model import AR
 from quandl import get as quandl_get
-from seaborn import jointplot, plt
+from seaborn import jointplot, pairplot, plt
 from pandas import DataFrame
 import datetime as dt
 from .config import *
@@ -36,9 +36,14 @@ class Frame(object):
         '''
         if self.product in QPRODUCT:
             quandl_code = QPRODUCT[self.product]
-            df = quandl_get(quandl_code, start_date=self._start, end_date=self._end)
+            df = quandl_get(quandl_code, 
+                            start_date=self._start, 
+                            end_date=self._end)
         else:
-            df = pdr.DataReader(self.product, 'yahoo', start=self._start, end=self._end)
+            df = pdr.DataReader(self.product, 
+                                'yahoo', 
+                                start=self._start, 
+                                end=self._end)
         return df
 
     def _get_series(self):
@@ -97,6 +102,10 @@ class Batch(Frame):
                 self.product += ticker
             ts_conn = Frame(ticker, self._start, self._end)
             self.frames[ticker] = ts_conn
+    
+    def pairplot(self):
+        pairplot(pd.DataFrame(self.frames), diag_kind="kde")
+        plt.show()
 
     def __iter__(self):
         for key, conn_obj in self.frames.items():

@@ -7,7 +7,7 @@ class TSCError(Exception):
     pass
     
 try:    
-    ApiConfig.api_key = open('../../quandl_api.key').read().strip()
+    ApiConfig.api_key = open('quandl.key').read().strip()
 except: 
     print('''
             warning - could not load quandl api_key
