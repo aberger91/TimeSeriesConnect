@@ -19,6 +19,9 @@ QPRODUCT = {'GC': 'CHRIS/CME_GC1',
            'CC': 'CHRIS/ICE_CC1',
            'ZW': 'CHRIS/CME_W1',
            'BC': 'BAVERAGE/USD',  #  BitCoin (Last)
-           'FF': 'FRED/DFF',  # FED FUNDS Effective Rate (Value)
-           'ES': 'CHRIS/CME_SP1'
-          }
+           'FF': 'FRED/DFF',      # FED FUNDS Effective Rate (Value)
+           'ES': 'CHRIS/CME_SP1',
+           'DX': 'CHRIS/ICE_DX1',
+           'PL': 'CHRIS/CME_PL1',
+           'SI': 'CHRIS/CME_SI4'
+	   }
