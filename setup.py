@@ -5,7 +5,7 @@ packages = ['tserie', 'tserie.config', 'tserie.tests', 'tserie.scripts']
 requirements = [x for x in open('requirements.txt', 'r')],
 
 setup(name='tserie',
-      version=0.01,
+      version=0.1,
       description=desc,
       url='https://github.com/aberger91',
       author='Andrew Berger',

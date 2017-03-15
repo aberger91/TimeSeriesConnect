@@ -1,5 +1,8 @@
-numpy
 seaborn
-quandl
-statsmodels
+matplotlib
+numpy
 sklearn
+pandas
+statsmodels
+pandas_datareader
+quandl

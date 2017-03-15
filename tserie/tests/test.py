@@ -33,4 +33,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+#    main()
+
+    bat = tsc.Batch(['GC', 'SI', 'PL', 'DX'],
+                    '2012-01-01', 
+                    '2017-01-01')
+    bat.plot()
+    plt.show()
