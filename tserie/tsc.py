@@ -19,22 +19,50 @@ except: raise TSCError('try: pip install pandas_datareader')
 
 
 class ApiStream(object):
-    QUANDL = quandl_get
-    PANDAS = pdr.DataReader    
-        
-
-class Frame(object):
     '''
     handle single posts to quandl, yahoo
     '''
     def __init__(self, product, start, end):
         self.product =  product
-        self._start = start
-        self._end =   end
-        self._exists = False
-        self._frame =   self._fetch_data()
-        self._series = self._get_series()
+        self._start =   start
+        self._end =     end
+        self._frame =   DataFrame
+        self._exists =  self._set_frame()
+        self._series =  self._extract_series()
+        
+    def _set_frame(self):
+        '''
+        stream data into pandas.DataFrame from online
+        return df
+        '''
+        if self.product in QPRODUCT:
+            quandl_code = QPRODUCT[self.product]
+            self._frame = quandl_get(quandl_code, 
+                            start_date=self._start, 
+                            end_date=self._end)
+        else:
+            self._frame = pdr.DataReader(self.product, 
+                                'yahoo', 
+                                start=self._start, 
+                                end=self._end)
+        return True if not self._frame.empty else False
+        
+    def _extract_series(self):
+        '''
+        raise error unless column from the df matches parameters
+        return str
+        '''
+        for col in COLUMN_NAMES:
+            if col in self._frame.columns:
+                _series = self._frame[col]
+                return _series
+        raise TSCError('column does not exist in config')
 
+
+class TimeSeriesFrame(ApiStream):
+    '''
+    basic market data instance, supports indexing
+    '''
     @property
     def series(self):
         '''
@@ -82,45 +110,21 @@ class Frame(object):
     def __repr__(self):
         return self.__str__()
 
-    def _fetch_data(self):
-        '''
-        stream data into df from quandl else yahoo
-        return df
-        '''
-        if self.product in QPRODUCT:
-            quandl_code = QPRODUCT[self.product]
-            df = ApiStream.QUANDL(quandl_code, 
-                            start_date=self._start, 
-                            end_date=self._end)
-        else:
-            df = ApiStream.PANDAS(self.product, 
-                                'yahoo', 
-                                start=self._start, 
-                                end=self._end)
-        self._exists = True if not df.empty else False
-        return df
 
-    def _get_series(self):
-        '''
-        raise error unless column from the df matches parameters
-        return str
-        '''
-        for col in COLUMN_NAMES:
-            if col in self._frame.columns:
-                _series = self._frame[col]
-                return _series
-        raise TSCError('column does not exist in config')
-
-
-class Batch(Frame):
+class TimeSeriesBatch(object):
+    '''
+    lookup and fetch list of product codes, start, end
+    '''
     def __init__(self, products, start, end):
         '''
-        lookup and fetch list of product codes
+        :products   list
+        :_start     str
+        :_end       str
         '''
         self.products = products
-        self._start = start
-        self._end = end
-        self._frames = dict()
+        self._start =   start
+        self._end =     end
+        self._frames =  dict()
         self.add(products)
 
     def __iter__(self):
@@ -129,43 +133,66 @@ class Batch(Frame):
 
     def __getattr__(self, val):
         '''
-        override Frame, handle pd.Series calls
+        handle pd.Series calls
         '''
         for name, _frame in self._frames.items():
             try:
                 v = getattr(_frame._series, val)
             except Exception as e:
                 raise TSCError(e)
-            return v
+        return v
 
     def add(self, products):
+        '''
+        insert Frames into _frames
+        '''
         for ticker in products:
             if ticker not in self.products:
                 self.products += ticker
-            _frame = Frame(ticker, self._start, self._end)
+            _frame = TimeSeriesFrame(ticker, self._start, self._end)
             self._frames[ticker] = _frame
+
+    def lengths(self):
+        '''
+        return list of lengths of each dataset
+        '''
+        ret = []
+        if self.exists():
+            ret = [len(self._frames[df]._series) for df in self._frames.keys()]
+        self._min_len = min(ret)
+        return ret
     
     def _append_returns_column(self):
+        '''
+        add attr to each Frame 
+        '''
         for name, _frame in self._frames.items():
             _frame._ret_df =  _frame._series.pct_change()
+            #TODO // test this:
+            #setattr(_frame, '_ret_df', _frame._series.pct_change())
 
     def _check_equal_lengths(self):
         '''
         warning if lengths do not match, for calculations
         return None
         '''
-        lengths = [len(self._frames[df]._series) for df in self._frames.keys()]
+        lengths = self.lengths()
         if any(map(lambda x: x != lengths[0], lengths)):
             print('''
                     warning: len mismatch
                     ''')
+            self._trim_equal_lengths()
+
+    def _trim_equal_lengths(self):
+        for name, _frame in self._frames.items():
+            _frame = _frame.ix[:self.min_len]
 
     def pairplot(self):
         pairplot(DataFrame(self._frames), diag_kind="kde")
         plt.show()
 
 
-class Pairs(Batch):
+class TimeSeriesPairs(TimeSeriesBatch):
     '''
     comparisons between prices and returns for two time series
     '''
@@ -210,7 +237,7 @@ class Pairs(Batch):
         return plt
 
 
-class Autos(Frame):
+class AutoRegressions(TimeSeriesFrame):
     def autocorr(self):
         autocorrelation_plot(self._series)
         plt.show()
