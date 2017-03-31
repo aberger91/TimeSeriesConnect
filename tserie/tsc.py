@@ -185,7 +185,7 @@ class TimeSeriesBatch(object):
 
     def _trim_equal_lengths(self):
         for name, _frame in self._frames.items():
-            _frame = _frame.ix[:self.min_len]
+            _frame = _frame.ix[:self._min_len]
 
     def pairplot(self):
         pairplot(DataFrame(self._frames), diag_kind="kde")
